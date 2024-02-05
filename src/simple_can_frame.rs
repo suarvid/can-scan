@@ -17,6 +17,15 @@ pub struct SimpleCanFrame {
 }
 
 impl SimpleCanFrame {
+    pub fn new(name: Option<String>, id: u32, dlc: usize, data: Vec<u8>) -> Self {
+        Self {
+            name,
+            id,
+            dlc,
+            data,
+        }
+    }
+
     pub fn from_can_frame(from_frame: CanFrame) -> Self {
         SimpleCanFrame {
             name: None,
@@ -46,5 +55,39 @@ impl Hash for SimpleCanFrame {
         self.id.hash(state);
         self.dlc.hash(state);
         self.data.hash(state);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::hash_map::DefaultHasher;
+
+    use super::*;
+
+    #[test]
+    fn test_frame_hashes_equal_even_with_different_names() {
+        let first_frame = SimpleCanFrame::new(
+            Some(String::from("Frame One")),
+            0x1337,
+            0x8,
+            vec![0x18, 0x1C, 0xFF],
+        );
+        let second_frame = SimpleCanFrame::new(
+            Some(String::from("Frame Two")),
+            0x1337,
+            0x8,
+            vec![0x18, 0x1C, 0xFF],
+        );
+        let frame_no_name = SimpleCanFrame::new(None, 0x1337, 0x8, vec![0x18, 0x1C, 0xFF]);
+
+        let mut hasher = DefaultHasher::new();
+        assert_eq!(
+            first_frame.hash(&mut hasher),
+            second_frame.hash(&mut hasher)
+        );
+        assert_eq!(
+            first_frame.hash(&mut hasher),
+            frame_no_name.hash(&mut hasher)
+        );
     }
 }

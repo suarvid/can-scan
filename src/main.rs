@@ -28,17 +28,17 @@ fn main() {
     let received_frames = receive_frames(ifname, frame_count);
 
     for frame in expected_frames {
-        if received_frames.contains(&frame) {
-            println!()
+        if !received_frames.contains(&frame) {
+            println!("CAN frame {:#?} was not received as expected.", frame);
         }
     }
 }
 
-/// Opens the given YAML file, creating a vector of CAN frames we expect 
+/// Opens the given YAML file, creating a vector of CAN frames we expect
 /// to receive from its contents.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// *  `file_path` - Path to the YAML file
 fn deserialize_expected_frames(file_path: &String) -> Vec<SimpleCanFrame> {
     let expected_f = fs::File::open(file_path)
@@ -48,11 +48,11 @@ fn deserialize_expected_frames(file_path: &String) -> Vec<SimpleCanFrame> {
     expected_msgs
 }
 
-/// Opens the given CAN interface, receives the given number of frames, 
+/// Opens the given CAN interface, receives the given number of frames,
 /// returning a set of unique frames received.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// *  `ifname` - Name of the CAN interface, "can0" for example
 /// *  `frame_count` - The number of frames to receive
 fn receive_frames(ifname: &String, frame_count: usize) -> HashSet<SimpleCanFrame> {

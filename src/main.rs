@@ -5,32 +5,59 @@ use crate::simple_can_frame::SimpleCanFrame;
 use serde_yaml::{self};
 use socketcan::{BlockingCan, CanSocket, Socket};
 
-use std::{collections::HashSet, env, fs};
+use std::{collections::HashSet, env, fs, process};
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let config = Config::from_args(env::args()).unwrap_or_else(|error| {
+        eprintln!("Failed to parse given arguments: {error}");
+        process::exit(1);
+    });
 
-    if args.len() < 4 {
-        eprintln!("Incorrect number of arguments!");
-        eprintln!("Usage: {} <can-interface> <yaml-file> <n-frames>", args[0]);
-        panic!("Example: {} can0 msgs.yaml 1000", args[0]);
-    }
+    let expected_frames = deserialize_expected_frames(&config.expected_msgs_file);
 
-    let ifname = &args[1];
-    let file_path = &args[2];
-    let frame_count = match args[3].parse() {
-        Ok(count) => count,
-        Err(_) => panic!("Failed to parse {} into a number of frames!", args[3]),
-    };
-
-    let expected_frames = deserialize_expected_frames(file_path);
-
-    let received_frames = receive_frames(ifname, frame_count);
+    let received_frames = receive_frames(&config.interface_name, config.capture_frame_count);
 
     for frame in expected_frames {
         if !received_frames.contains(&frame) {
             println!("CAN frame {:#?} was not received as expected.", frame);
         }
+    }
+}
+/// Represents the configuration of the program, based on the given
+/// command-line arguments
+struct Config {
+    interface_name: String,
+    expected_msgs_file: String,
+    capture_frame_count: usize,
+}
+
+impl Config {
+    fn from_args(mut args: impl Iterator<Item = String>) -> Result<Self, &'static str> {
+        args.next(); // Skip name of function
+
+        let if_name = match args.next() {
+            Some(if_name) => if_name,
+            None => return Err("No CAN interface name specified."),
+        };
+
+        let msgs_file = match args.next() {
+            Some(msgs_file) => msgs_file,
+            None => return Err("No file containing expected messages given."),
+        };
+
+        let frame_count = match args.next() {
+            Some(count) => {
+                let count: usize = count.parse().expect("Invalid number of frames to capture.");
+                count
+            }
+            None => return Err(""),
+        };
+
+        Ok(Config {
+            interface_name: if_name,
+            expected_msgs_file: msgs_file,
+            capture_frame_count: frame_count,
+        })
     }
 }
 
